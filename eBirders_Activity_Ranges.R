@@ -1,11 +1,11 @@
 ###################################################
 #
 # Title: eBirders_Activity_Ranges.R
-# Purpose: compute the number of active eBirders per country, identify the most active eBirders per country
+# Purpose: compute the number of eBird records collected and of active eBirders per country, identify the most active eBirders per country
 #          and calculate the area of their activity ranges.
 #          
-# Author: Stephanie Roilo, Technische Universit‰t Dresden
-# Date: started on December20th 2022, last edited on May 12th 2023
+# Author: Stephanie Roilo, Technische Universit√§t Dresden
+# Date: started on December20th 2022, last edited on June 29th 2023
 #
 ###################################################
 # set the language to EN
@@ -28,29 +28,39 @@ library(networkD3)  # to make Sankey plots
 
 ### download only the data from eBird, and extract the metadata on individual users -------------
 ### NOTE: this part was run in the HPC
-country_name = "Australia"
-country_iso2 = "AU"
-# create a dataframe in which each row corresponds to a day
-# we only select the dates between 15th of March and 1st of May in 2019 and 2020
-dates = data.frame(Date = c(seq(as.Date("2019-03-15"), as.Date("2019-05-01"), by="days"),
-                            seq(as.Date("2020-03-15"), as.Date("2020-05-01"), by="days")) )
-# loop through each day and extract the number of eBird records, the number of eBirders active on that day, and their unique IDs
-for (i in c(1:nrow(dates))) {
-  date = dates$Date[i]
-  daydat = occ_data(country=country_iso2, basisOfRecord = "HUMAN_OBSERVATION", hasCoordinate=TRUE, 
-                    eventDate = date, institutionCode = "CLO", limit=100000)
-  # data download has a hard limit of 100000, if records are more than that, set the result to NA
-  dates$n_CLO[i] = ifelse(daydat$meta$count <= 100000, daydat$meta$count, NA)
-  dates$n_obsr[i] = ifelse(daydat$meta$count == 0, 0, length(unique(daydat$data$recordedBy)))
-  dates$ID_obsr[i] = ifelse(daydat$meta$count == 0, 0, paste(sort(unique(daydat$data$recordedBy)), collapse=" | "))
-  write.table(dates, paste0("C:/Users/sroilo/Desktop/GBIF/HomeRange/CLO_", country_iso2, "_March15_May1_2019_2020.csv"), sep=";", dec=".", row.names = F)
-}  
+library(parallel)  # to parallelize computations across cores
+
+# make a function that takes country code as input, and runs the whole loop to download the data for each day
+eBirder_fun <- function(iso2_code) { 
+  # create a dataframe in which each row corresponds to a day
+  # we only select the dates between 15th of March and 1st of May in 2019 and 2020
+  dates = data.frame(Date = c(seq(as.Date("2019-03-15"), as.Date("2019-05-01"), by="days"),
+                              seq(as.Date("2020-03-15"), as.Date("2020-05-01"), by="days")) )
+  # loop through each day and extract the number of eBird records, the number of eBirders active on that day, and their unique IDs
+  for (i in c(1:nrow(dates))) {
+    date = dates$Date[i]
+    daydat = occ_data(country=iso2_code, basisOfRecord = "HUMAN_OBSERVATION", hasCoordinate=TRUE, 
+                      eventDate = date, institutionCode = "CLO", limit=100000)
+    dates$n_CLO[i] = daydat$meta$count
+    dates$n_obsr[i] = ifelse(daydat$meta$count == 0, 0, length(unique(daydat$data$recordedBy)))
+    dates$ID_obsr[i] = ifelse(daydat$meta$count == 0, 0, paste(sort(unique(daydat$data$recordedBy)), collapse=" | "))
+    write.table(dates, paste0("C:/Users/sroilo/Desktop/GBIF/HomeRange/CLO_", iso2_code, "_March15_May1_2019_2020.csv"), sep=";", dec=".", row.names = F)
+  }
+}
+
+# list of countries selected for the analysis (10 per economic class) :
+cnt_list = c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE", # Developed region
+             "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", # emerging region
+             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK", # developing region
+             "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ") # least developed
+# parallelize through multiple cores
+mclapply(cnt_list, eBirder_fun, mc.cores=10)
 
 ### CHANGE IN NUMBER of eBird records and of eBirders ------------------------------------
 # list of countries selected for the analysis (10 per economic class) :
-cnt_list = c("AU", "GB", "PT", "IL", "DE", "FR", "SE", "NZ", "CZ", "NL", #Developed region
-             "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", "VE",  # emerging region
-             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",  # developing region
+cnt_list = c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE", # Developed region
+             "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", # emerging region
+             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK", # developing region
              "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ")  # least developed
 
 # load the full country dataset and count total eBirders active during the two periods
@@ -74,36 +84,36 @@ tot_ebird = merge(tot_ebird, cntall[,c("Country_name", "economy_coarse", "String
 # make cleveland dotplots to show differences in eBird records and in eBirders before (2019) and during (2020) lockdown
 # order countries by economic class and number of eBird records in 2019
 tot_ebird2 <- tot_ebird %>%
-  mutate( Country =factor(Country,levels=c("AU", "GB", "PT", "IL", "DE", "FR", "SE", "NZ", "CZ", "NL", #Developed region
-                                           "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", "VE",  # emerging region
-                                           "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",  # developing region
+  mutate( Country =factor(Country,levels=c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE", # Developed region
+                                           "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", # emerging region
+                                           "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK", # developing region
                                            "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ")) )
 
-# plot number of eBird records, ordered by economic class
+# plot number of eBird records (log10-transformed), ordered by economic class
 ggplot(tot_ebird2) +
-  geom_segment( aes(x=Country, xend=Country, y=eBird_records_2019, yend=eBird_records_2020), color="darkgrey", size=1) +
-  geom_point( aes(x=Country, y=eBird_records_2019), color=rgb(0.2,0.7,0.1,0.5), size=3 ) +
-  geom_point( aes(x=Country, y=eBird_records_2020), color=rgb(0.7,0.2,0.1,0.5), size=3 ) +
+  geom_segment( aes(x=Country, xend=Country, y=log10(eBird_records_2019), yend=log10(eBird_records_2020)), color="darkgrey", size=1) +
+  geom_point( aes(x=Country, y=log10(eBird_records_2019)), color=rgb(0.2,0.7,0.1,0.5), size=3 ) +
+  geom_point( aes(x=Country, y=log10(eBird_records_2020)), color=rgb(0.7,0.2,0.1,0.5), size=3 ) +
   theme_minimal() +
   xlab("") +
-  ylab("Number of eBird records")
-# plot number of eBirders, ordered by economic class
+  ylab("log10(Number of eBird records)")
+# plot number of eBirders (log10-transformed), ordered by economic class
 ggplot(tot_ebird2) +
-  geom_segment( aes(x=Country, xend=Country, y=eBirders_2019, yend=eBirders_2020), color="darkgrey", size=1) +
-  geom_point( aes(x=Country, y=eBirders_2019), color=rgb(0.2,0.7,0.1,0.5), size=3 ) +
-  geom_point( aes(x=Country, y=eBirders_2020), color=rgb(0.7,0.2,0.1,0.5), size=3 ) +
+  geom_segment( aes(x=Country, xend=Country, y=log10(eBirders_2019), yend=log10(eBirders_2020)), color="darkgrey", size=1) +
+  geom_point( aes(x=Country, y=log10(eBirders_2019)), color=rgb(0.2,0.7,0.1,0.5), size=3 ) +
+  geom_point( aes(x=Country, y=log10(eBirders_2020)), color=rgb(0.7,0.2,0.1,0.5), size=3 ) +
   theme_minimal() +
   xlab("") +
-  ylab("Number of eBirders")
+  ylab("log10(Number of eBirders)")
 
 # save tot_ebird dataframe to file
-write.table(tot_ebird, "C:/Users/sroilo/Desktop/GBIF/HomeRange/Tot_eBird_20230509.csv", sep=";", dec=",", row.names=F)
+write.table(tot_ebird, "C:/Users/sroilo/Desktop/GBIF/HomeRange/Tot_eBird_20230620.csv", sep=";", dec=",", row.names=F)
 
 ### ACTIVITY RANGES of individual eBirders ------------------------
 ## subset the country selection and run the activity range analysis
-cnt_list = c("AU", "GB", "PT", "IL", "DE", "FR", "SE", "NZ", "CZ", "NL", #Developed region
-             "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", "VE",  # emerging region
-             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",  # developing region
+cnt_list = c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE", # Developed region
+             "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", # emerging region
+             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK", # developing region
              "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ")  
 # load the shapefile of the world's borders to retrieve information on which countries eBirders visited
 wmap = ne_countries(scale = "medium", type = "countries", returnclass = c("sf")) %>% 
@@ -182,9 +192,9 @@ rm(freq, df, dfs, jdfs, dat19, dat20, allobsr, dat)
 
 
 # put together the information on all activity ranges for each country to produce boxplots
-cnt_list = c("AU", "GB", "PT", "IL", "DE", "FR", "SE", "NZ", "CZ", "NL", #Developed region
-             "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", "VE",  # emerging region
-             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",  # developing region
+cnt_list = c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE", # Developed region
+             "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", # emerging region
+             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK", # developing region
              "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ")  
 
 allranges = data.frame()
@@ -213,14 +223,14 @@ arlong <- gather(allranges[, c("HR_area_km2_2019","HR_area_km2_2020", "Country")
 arlong$Year = gsub(pattern= "HR_area_km2_", replacement="", arlong$Year)
 # number of eBird records, ordered by economic class
 arlong2 <- arlong %>%
-  mutate( Country =factor(Country,levels=c("AU", "GB", "PT", "IL", "DE", "FR", "SE", "NZ", "CZ", "NL",  #Developed region
-                                           "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", "VE",  # emerging region
-                                           "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",  # developing region
+  mutate( Country =factor(Country,levels=c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE", # Developed region
+                                           "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", # emerging region
+                                           "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK", # developing region
                                            "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ")) )
 # make boxplots
 ggplot(arlong2, aes(x=Country, y=log10(Activity_range_km2 + 1), fill=Year)) + 
   geom_boxplot(outlier.shape = NA) + 
-  scale_fill_manual(values=c(rgb(0.2,0.7,0.1,0.5), rgb(0.7,0.2,0.1,0.5))) +
+  scale_fill_manual(values=c(rgb(0.2,0.7,0.1,0.7), rgb(0.7,0.2,0.1,0.7))) +
   theme_minimal() + 
   ylab("log10(Area of eBirder's activity range + 1)")
 
@@ -232,7 +242,7 @@ for ( i in seq_along(cnt_list)) {
   kstest$D_stat[i] = round(KST$statistic, digits=3)
   kstest$p_value[i] = round(KST$p.value, digits=3)
 }
-write.table(kstest, "C:/Users/sroilo/Desktop/GBIF/HomeRange/KS_test_20230509.csv", sep=";", dec=",", row.names=F)
+write.table(kstest, "C:/Users/sroilo/Desktop/GBIF/HomeRange/KS_test_20230620.csv", sep=";", dec=",", row.names=F)
 
 #### Sankey diagram of eBirders' movements ------------------------------------------------------------------
 # see tutorial here https://www.data-to-viz.com/graph/sankey.html 
@@ -246,7 +256,7 @@ for (cnt in unique(allranges$Country)) {
   sankey =  rbind(sankey, table)
 }
 # plot a subset of countries, to avoid overly complicated graphs
-sankey = sankey[which(sankey$Source_2019 %in% c("NZ", "PE", "PA", "KH")),]  
+sankey = sankey[which(sankey$Source_2019 %in% c("ES", "ZA", "BZ", "KH")),]  
 #  create a node data frame
 nodes = data.frame(name=c(as.character(sankey$Source_2019), as.character(sankey$Target_2020)) %>% unique())
 # With networkD3, connection must be provided using id, not using real name like in the links dataframe.. So we need to reformat it.
