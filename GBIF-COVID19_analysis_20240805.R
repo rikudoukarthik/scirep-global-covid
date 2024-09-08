@@ -6,7 +6,7 @@
 #          and their impacts on people's movements, as well as country-specific confounding factors (population size, economic class).
 #          
 # Author: Stephanie Roilo, TUD Dresden University of Technology, Germany & Bonn University, Germany
-# Date: last edited on May 11th 2023
+# Date: last edited on September 8th 2024
 # R version: 4.4.1
 ###################################################
 
@@ -19,7 +19,7 @@ library(ISOcodes)
 library(data.table)
 library(lubridate)
 library(rnaturalearth)
-#library(rnaturalearthdata)
+library(rnaturalearthdata)
 library(sf)
 library(DHARMa)   # to produce diagnostic plots of the model residuals
 library(tmap)     # for nice maps
