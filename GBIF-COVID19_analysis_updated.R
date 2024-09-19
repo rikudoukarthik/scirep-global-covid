@@ -1,12 +1,12 @@
 ###################################################
 #
-# Title: GBIF-COVID19_analysis.R
+# Title: GBIF-COVID19_analysis_updated.R
 # Purpose: calculate the change in the amount of records uploaded to the Global Biodiversity Information Facility (GBIF) during the COVID19 pandemic 
 #          relative to pre-pandemic levels. Model how the change in records is affected by the lockdown restrictions in place in the different countries 
 #          and their impacts on people's movements, as well as country-specific confounding factors (population size, economic class).
 #          
 # Author: Stephanie Roilo, TUD Dresden University of Technology, Germany & Bonn University, Germany
-# Date: last edited on September 8th 2024
+# Date: last edited on September 19th 2024
 # R version: 4.4.1
 ###################################################
 
@@ -154,6 +154,36 @@ grid.arrange(p1, p2, p3, p4, ncol=2) # saved as .pdf, 6x6in
 wmap = wmap[which(wmap$Country %in% dat$Country),]
 
 ### WORLD MAP -------------------------------------
+# read data from all countries, with downloaded GBIF observations, stringency index and movement data (see script "Data_download.R" for details on its preparation)
+allcn = fread("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/Anthropause_app/Data_249_countries_20230321.csv", encoding = 'Latin-1') 
+allcn$Date = as.Date(allcn$Date)
+names(allcn)[1:10] <- c("Date","Nr_records", "n_CLO","Stringency_index","Change_park_visits","Change_time_at_home" ,"weekday",
+                        "weeknr","Year","Records_100")
+start_date = "2020-03-15"
+end_date = "2020-05-01"
+# compute mean number of records per day, across the selected period, for all countries 
+cntall = allcn %>% filter(Date>=start_date & Date<=end_date) %>%
+  group_by(Country) %>% summarise_at(vars(Nr_records), mean, na.rm=T)
+# compute the mean daily records in the same period of the previous year, to be used as baseline
+cntall_PY = allcn %>% filter(Date >= (as.Date(start_date) - years(1)) & Date <= (as.Date(end_date) - years(1))) %>%
+  group_by(Country) %>% summarise_at(vars(Nr_records), mean, na.rm=T)
+# bind to the other dataframe
+cntall$Records_prev_year = cntall_PY$Nr_records[match(cntall$Country, cntall_PY$Country)]
+# compute the percent change in records collected between the two time periods (lockdown vs. pre-pandemic)
+cntall$Change_records = ifelse(cntall$Records_prev_year>0, (cntall$Nr_records - cntall$Records_prev_year)/cntall$Records_prev_year*100, NA)
+# add iso3 and iso2 codes so that the dataframe can be matched to the World map
+cntall[cntall$Country == "Turkey", "Country"] <- "Türkiye"  # correct the name of Turkey
+cntall["adm0_a3"] <- ISO_3166_1$Alpha_3[match(cntall$Country, ISO_3166_1$Name)]
+cntall["Country_code"] <- ISO_3166_1$Alpha_2[match(cntall$Country, ISO_3166_1$Name)]
+# load shapefile of the countries of the world (rnaturalearth package version 1.0.1, and rnaturalearthdata version 1.0.0)
+wmap_all = ne_countries(scale = "medium", type = "countries", returnclass = c("sf")) %>%
+  select(c("name_long", "adm0_a3","pop_est", "economy", "income_grp"))
+# correct one country code 
+wmap_all$adm0_a3[which(wmap_all$name_long=="South Sudan")] <- "SSD"
+# merge dataframe and shapefile, retain only countries with information
+wmap = merge(wmap_all, cntall, by = "adm0_a3", all.y=T)
+# remove empty geometries
+wmap = wmap %>% filter(!st_is_empty(.))
 # make a world map with Change_records as cloropleth
 sf::sf_use_s2(FALSE)
 wmap_all = wmap_all[-which(wmap_all$name_long=="Antarctica"),] # remove Antarctica to gain more space
@@ -161,11 +191,11 @@ changemap = tm_shape(wmap_all) + tm_borders(col="darkgrey") +
   tm_shape(wmap) + tm_polygons("Change_records", palette="RdYlBu", 
                                 breaks = c( -100, -50, -25, -10, 0, 10, 25, 50, 100, 200)) + 
   tm_layout(legend.text.size = 0.8, legend.outside=T) + tmap_options(check.and.fix = TRUE)
-tmap_save(changemap, width= 6, height=3, filename="C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/images/Worldmap_change_records_20240820.jpeg")
+tmap_save(changemap, width= 6, height=3, filename="C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/images/Worldmap_change_records_20240912.png")
 
 #### COUNTRY LIST by eBird proportions ---------------------
 # read data from all countries
-allcn = fread("C:/Users/sroilo/Desktop/GBIF/Anthropause_app/Data_249_countries_20230321.csv") 
+allcn = fread("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/Anthropause_app/Data_249_countries_20230321.csv") 
 allcn$Date = as.Date(allcn$Date)
 names(allcn)[1:10] <- c("Date","Nr_records", "n_CLO","Stringency_index","Change_park_visits","Change_time_at_home" ,"weekday",
                         "weeknr","Year","Records_100")
@@ -185,10 +215,11 @@ cntall$Change_records = dat$Change_records[match(cntall$Country, dat$Country)]
 # remove NAs (countries with no economy group due to e.g. too few records, or missing stringency or mobility data)
 cntall = na.omit(cntall)
 cntall = cntall[order(cntall$eBird_prop, decreasing=T),]
-write.table(cntall, "C:/Users/sroilo/Desktop/GBIF/HomeRange/Countries_by_eBird_proportions_20230509.csv", sep=";", dec=",", row.names=F)
+write.table(cntall, "C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/Countries_by_eBird_proportions_20230509.csv", sep=";", dec=",", row.names=F)
 
 ## repeat but selecting only the 2019 baseline period (2019-03-15 to 2019-05-01)
-allcn = fread("C:/Users/sroilo/Desktop/GBIF/Anthropause_app/Data_249_countries_20230321.csv") 
+dat = read.table("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/LinRegr_fullData_20240820.csv", sep=";", dec=",", header=T)
+allcn = fread("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/Anthropause_app/Data_249_countries_20230321.csv", encoding = 'Latin-1')
 allcn$Date = as.Date(allcn$Date)
 names(allcn)[1:10] <- c("Date","Nr_records", "n_CLO","Stringency_index","Change_park_visits","Change_time_at_home" ,"weekday",
                         "weeknr","Year","Records_100")
@@ -197,9 +228,10 @@ cntall = allcn %>% filter(Date>="2019-03-15" & Date<="2019-05-01") %>%
 # calculate ratio of eBird/GBIF data
 cntall$eBird_prop = round(cntall$n_CLO/cntall$Nr_records*100, digits=0)
 # merge with the other economy group information
+cntall[cntall$Country == "Turkey", "Country"] <- "Türkiye"  # correct the name of Turkey
 cntall$economy_coarse = dat$economy_coarse[match(cntall$Country, dat$Country)]
 # remove NAs (countries with no economy group due to e.g. too few records, or missing stringency or mobility data)
 cntall = na.omit(cntall)
 cntall = cntall[order(cntall$n_CLO, decreasing=T),]
-write.table(cntall, "C:/Users/sroilo/Desktop/GBIF/HomeRange/Countries_by_eBird_proportions_MarMay20230509.csv", sep=";", dec=",", row.names=F)
+write.table(cntall, "C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/Table_S3_20240919.csv", sep=";", dec=",", row.names=F)
 
