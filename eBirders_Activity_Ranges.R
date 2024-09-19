@@ -4,8 +4,8 @@
 # Purpose: compute the number of active eBirders per country, identify the most active eBirders per country
 #          and calculate the area of their activity ranges.
 #          
-# Author: Stephanie Roilo, Technische Universität Dresden 
-# Date: started on December 20th 2022, last edited on February 1st 2024
+# Author: Stephanie Roilo, TUD Dresden University of Technology, Germany & Bonn University, Germany
+# Date: started on December 20th 2022, last edited on September 19th 2024
 #
 ###################################################
 # set the language to EN
@@ -27,7 +27,7 @@ library(tidyr)  # to convert from wide to long format of dataframes
 
 ### download only the data from eBird, and extract the metadata on individual users -------------
 ### NOTE: this part was run in the HPC
-country_iso2 = "IN"
+country_iso2 = "TW"
 # create a dataframe in which each row corresponds to a day
 # we only select the dates between 15th of March and 1st of May in 2019 and 2020
 dates = data.frame(Date = c(seq(as.Date("2019-03-15"), as.Date("2019-05-01"), by="days"),
@@ -41,7 +41,7 @@ for (i in c(1:nrow(dates))) {
   dates$n_CLO[i] = daydat$meta$count
   dates$n_obsr[i] = ifelse(daydat$meta$count > 100000, NA, length(unique(daydat$data$recordedBy)) )
   dates$ID_obsr[i] = ifelse(daydat$meta$count > 100000, NA, paste(sort(unique(daydat$data$recordedBy)), collapse=" | ") )
-  write.table(dates, paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/CLO_", country_iso2, "_March15_May1_2019_2020.csv"), sep=";", dec=".", row.names = F)
+  write.table(dates, paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/CLO_", country_iso2, "_March15_May1_2019_2020.csv"), sep=";", dec=".", row.names = F)
 }  
 
 ## for the USA, compile the data at the state level, to avoid too large datasets (>100000 records)
@@ -65,7 +65,7 @@ for (uscnt in usa_cnts) {
     dates$n_CLO[i] = daydat$meta$count
     dates$n_obsr[i] = ifelse(daydat$meta$count > 100000, NA, length(unique(daydat$data$recordedBy)) )
     dates$ID_obsr[i] = ifelse(daydat$meta$count > 100000, NA, paste(sort(unique(daydat$data$recordedBy)), collapse=" | ") )
-    write.table(dates, paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/US/CLO_US_", uscnt, "_March15_May1_2019_2020.csv"), sep=";", dec=".", row.names = F)
+    write.table(dates, paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/US/CLO_US_", uscnt, "_March15_May1_2019_2020.csv"), sep=";", dec=".", row.names = F)
   }  
 }
 # now, calculate the total of eBird records and of unique observers throughout the USA
@@ -76,22 +76,22 @@ for (i in c(1:nrow(dates))) {
   daydat = occ_data(country="US", basisOfRecord = "HUMAN_OBSERVATION", hasCoordinate=TRUE, 
                     eventDate = date, institutionCode = "CLO", limit=1)
   # read through all the single countries' data and put everything together
-  all_obsr = read.table(paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/US/CLO_US_Alabama_March15_May1_2019_2020.csv"), sep=";", dec=".", header=T)[i, "ID_obsr"]
+  all_obsr = read.table(paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/US/CLO_US_Alabama_March15_May1_2019_2020.csv"), sep=";", dec=".", header=T)[i, "ID_obsr"]
   for (uscnt in usa_cnts[2:51]) {
-    cntdat = read.table(paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/US/CLO_US_", uscnt, "_March15_May1_2019_2020.csv"), sep=";", dec=".", header=T)
+    cntdat = read.table(paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/US/CLO_US_", uscnt, "_March15_May1_2019_2020.csv"), sep=";", dec=".", header=T)
     all_obsr = paste0(all_obsr, " | ", cntdat[i,"ID_obsr"]) 
   }
   all_obsr_list = all_obsr %>% strsplit(split=" | ", fixed=T) 
   dates$n_CLO[i] = daydat$meta$count
   dates$n_obsr[i] = length(unique(unlist(all_obsr_list)))
   dates$ID_obsr[i] = paste(unique(unlist(all_obsr_list)), collapse= " | ")
-  write.table(dates, paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/CLO_US_March15_May1_2019_2020.csv"), sep=";", dec=".", row.names = F)
+  write.table(dates, paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/CLO_US_March15_May1_2019_2020.csv"), sep=";", dec=".", row.names = F)
 } 
 rm(dates, cntdat, all_obsr, all_obsr_list, uscnt, usa_cnts, daydat)
 
 ### CHANGE IN NUMBER of eBird records and of eBirders ------------------------------------
 # list of countries selected for the analysis (10 per economic class) :
-cnt_list = c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE",  # Developed region
+cnt_list = c("US", "CA", "ES", "AU", "GB", "TW", "PT", "IL", "DE", "FR",  # Developed region
              "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA",  # emerging region
              "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",  # developing region
              "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ")  # least developed
@@ -100,7 +100,7 @@ cnt_list = c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE",  # Deve
 tot_ebird = data.frame(Country = cnt_list)
 for (i in c(1:length(cnt_list))) {
   cntr = tot_ebird$Country[i]
-  dat = read.table(paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/CLO_", cntr, "_March15_May1_2019_2020.csv"), sep=";", dec=",", header=T)
+  dat = read.table(paste0("C:/Users/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/CLO_", cntr, "_March15_May1_2019_2020.csv"), sep=";", dec=",", header=T)
   tot_ebird$eBird_records_2019[i] = sum(dat$n_CLO[dat$Date<= "2019-05-01" & dat$Date>= "2019-03-15"])
   tot_ebird$eBird_records_2020[i] = sum(dat$n_CLO[dat$Date<= "2020-05-01" & dat$Date>= "2020-03-15"])
   allobsr_2019 = paste(dat$ID_obsr[which(dat$Date<= "2019-05-01" & dat$Date>= "2019-03-15" & dat$ID_obsr!="")], collapse=" | ") %>% strsplit(split=" | ", fixed=T)
@@ -109,7 +109,7 @@ for (i in c(1:length(cnt_list))) {
   tot_ebird$eBirders_2020[i] = length(unique(unlist(allobsr_2020)))
 }
 # add info on stringency index and mobility data to the dataframe
-cntall = read.table("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/Countries_by_eBird_proportions_20230509.csv", sep=";", dec=",", header=T)
+cntall = read.table("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/Countries_by_eBird_proportions_20230509.csv", sep=";", dec=",", header=T)
 names(cntall)[1] <- "Country_name"
 cntall$Country = cntall$Country_code
 tot_ebird = merge(tot_ebird, cntall[,c("Country_name", "economy_coarse", "Stringency_index", "Change_park_visits","Country")], by="Country")
@@ -117,7 +117,7 @@ tot_ebird = merge(tot_ebird, cntall[,c("Country_name", "economy_coarse", "String
 # make cleveland dotplots to show differences in eBird records and in eBirders before (2019) and during (2020) lockdown
 # order countries by economic class and number of eBird records in 2019
 tot_ebird2 <- tot_ebird %>%
-  mutate( Country =factor(Country,levels=c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE",     # Developed region
+  mutate( Country =factor(Country,levels=c("US", "CA", "ES", "AU", "GB", "TW", "PT", "IL", "DE", "FR",     # Developed region
                                            "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA",     # emerging region
                                            "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",     # developing region
                                            "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ")))   # least developed region
@@ -141,11 +141,11 @@ ggplot(tot_ebird2) +
   ylab("log10(Number of eBirders)")
 
 # save tot_ebird dataframe to file
-write.table(tot_ebird, "C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/Tot_eBird_20240130.csv", sep=";", dec=",", row.names=F)
+write.table(tot_ebird, "C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/Tot_eBird_20240130.csv", sep=";", dec=",", row.names=F)
 
 ### ACTIVITY RANGES of individual eBirders ------------------------
 ## subset the country selection and run the activity range analysis
-cnt_list = c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE", # Developed region
+cnt_list = c("US", "CA", "ES", "AU", "GB", "TW", "PT", "IL", "DE", "FR", # Developed region
              "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", # emerging region
              "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK", # developing region
              "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ") # least developed
@@ -169,10 +169,10 @@ for (country_iso2 in cnt_list) {
   # filter out the chosen country to intersect records of eBirders
   cntr_shp = wmap %>% filter(iso_a2 == country_iso2)
   # create a folder to store the results
-  cntr.dir <- paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/spatial/", country_iso2)
+  cntr.dir <- paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/spatial/", country_iso2)
   dir.create(cntr.dir, showWarnings=FALSE, recursive=TRUE)
   # load the full country dataset and filter eBirders that have been most active in spring 2019 (March 15th to May 1st)
-  dat = read.table(paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/CLO_", country_iso2, "_March15_May1_2019_2020.csv"), sep=";", dec=",", header=T)
+  dat = read.table(paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/CLO_", country_iso2, "_March15_May1_2019_2020.csv"), sep=";", dec=",", header=T)
   # collect all the eBirder ID which were active in spring 2019 (time interval must correspond to lockdown period in 2020)
   allobsr = paste(dat$ID_obsr[which(dat$Date>=as.Date(lockdown_start) & dat$Date<=as.Date(lockdown_end))], collapse=" | ") %>% strsplit(split=" | ", fixed=T)
   # order by most frequent observer (by nr. of recording days)
@@ -217,24 +217,24 @@ for (country_iso2 in cnt_list) {
     freq$Countries_2020[i] = paste(unique(sort(na.omit(jdfs$name_long[jdfs$year=="2020"]))), collapse =", ")
     freq$Countries_code_2019[i] = paste(unique(sort(na.omit(jdfs$iso_a2[jdfs$year=="2019"]))), collapse =", ")
     freq$Countries_code_2020[i] = paste(unique(sort(na.omit(jdfs$iso_a2[jdfs$year=="2020"]))), collapse =", ")
-    st_write(jdfs, paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/spatial/", country_iso2, "/", obsrID, ".gpkg"))
+    st_write(jdfs, paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/spatial/", country_iso2, "/", obsrID, ".gpkg"))
   }
   # save the dataframe to file
-  write.table(freq, paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/spatial/", country_iso2, "/eBirders.csv"), sep=";", dec=",", row.names=F)
+  write.table(freq, paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/spatial/", country_iso2, "/eBirders.csv"), sep=";", dec=",", row.names=F)
 }
 rm(freq, df, dfs, jdfs, dat19, dat20, allobsr, dat)
 
 
 # put together the information on all activity ranges for each country to produce boxplots
-cnt_list = c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE", # Developed region
-             "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA", # emerging region
-             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK", # developing region
+cnt_list = c("US", "CA", "ES", "AU", "GB", "TW", "PT", "IL", "DE", "FR",  # Developed region
+             "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA",  # emerging region
+             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",  # developing region
              "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ")  # least developed region
 
 allranges = data.frame()
 for (i in c(1:length(cnt_list))) {
     country_iso2 = cnt_list[i]
-    freq = read.table(paste0("C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/spatial/", country_iso2, "/eBirders.csv"), sep=";", dec=",", header=T)
+    freq = read.table(paste0("C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/spatial/", country_iso2, "/eBirders.csv"), sep=";", dec=",", header=T)
     freq = freq[1:min(30, nrow(freq)),]
     freq$Country = country_iso2
     allranges = rbind(allranges, freq)
@@ -257,7 +257,7 @@ arlong <- gather(allranges[, c("HR_area_km2_2019","HR_area_km2_2020", "Country")
 arlong$Year = gsub(pattern= "HR_area_km2_", replacement="", arlong$Year)
 # number of eBird records, ordered by economic class
 arlong2 <- arlong %>%
-  mutate( Country =factor(Country,levels=c("US", "CA", "ES", "AU", "GB", "PT", "IL", "DE", "FR", "SE",   # Developed region
+  mutate( Country =factor(Country,levels=c("US", "CA", "ES", "AU", "GB", "TW", "PT", "IL", "DE", "FR",   # Developed region
                                            "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "TR", "ZA",   # emerging region
                                            "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",   # developing region
                                            "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ"))) # least developed region
@@ -282,7 +282,7 @@ for ( i in seq_along(cnt_list)) {
   kstest$D_stat[i] = round(KST$statistic, digits=3)
   kstest$p_value[i] = round(KST$p.value, digits=3)
 }
-write.table(kstest, "C:/Users/sroilo/Desktop/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/KS_test_20240131.csv", sep=";", dec=",", row.names=F)
+write.table(kstest, "C:/Users/steph/Documents/BESTMAP documents/Papers/GBIF_COVID19/GBIF/HomeRange/KS_test_20240131.csv", sep=";", dec=",", row.names=F)
 
 rm(list=ls())
-setwd("C:/Users/sroilo/Documents")
+setwd("C:/Users/steph/Documents")
