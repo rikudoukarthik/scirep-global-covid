@@ -115,9 +115,11 @@ sum(MarMay$count_eBird > MarMay$count) # 0, all eBird counts are smaller than th
 write.table(MarMay, file = "Records_per_country_MarMay_Jan2025snapshot_20250109.csv", sep = ";", dec = ",", row.names = FALSE)
 
 ### Stringency index and mobility reports -------------------
+
 # download Covid OWID (Our World In Data) data and the Google Covid-19 community mobility report data
 covid = fread("https://covid.ourworldindata.org/data/owid-covid-data.csv")
 mob = fread("https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv")
+
 # set start and end dates of the time period of interest
 start_date = "2019-01-01"  # to be entered in the format yyyy-mm-dd
 end_date = "2022-10-15"
@@ -140,8 +142,8 @@ allcn = allcn[-which(allcn$countrycode=="ZZ"),]
 covid = covid %>% 
   select(iso_code, location, date, stringency_index, population) %>%
   filter(
-  date >= start_date, 
-  date <= end_date)
+    date >= start_date, 
+    date <= end_date)
 # fix isocodes for Kosovo, and remove the multi-country entries (e.g. "World", continents, etc. which are preceded by OWID_)
 covid$iso_code[covid$location=="Kosovo"] = "XKX"
 covid = covid[!grepl("OWID", covid$iso_code),]
@@ -168,7 +170,6 @@ allcn = allcn[,c(1:9, 11:16)]
 write.table(allcn, file = "Data_250_countries_Jan2025snapshot_20250109.csv", sep = ",", dec = ".", row.names = FALSE)
 
 rm(covid, mob,snapshottab, ebirdc)
-
 ### Model effect of lockdown on changes in data collection ------------------------
 allcn = fread("Data_250_countries_Jan2025snapshot_20250109.csv")
 
