@@ -1,0 +1,10 @@
+---
+title: "title?"
+bibliography: covid-ebirding.json
+csl: nature.csl
+format: 
+  docx:
+    reference-doc: word_template.docx
+---
+
+Render [@thrikkadeeri2024]
