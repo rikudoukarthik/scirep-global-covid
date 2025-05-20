@@ -1,8 +1,6 @@
 # custom GBIF download
 # https://www.gbif.org/occurrence/download?basis_of_record=HUMAN_OBSERVATION&month=3&month=4&month=5&year=2019,2022&occurrence_status=present
 
-###################################################
-#
 # Title: GBIF-COVID-9 analysis_20250130.R
 # Purpose: Extract daily counts of species occurrence records (only those that are georeferenced and tagged as human observations) from the monthly snapshot of the
 #          Global Biodiversity Information Facility (GBIF), dated January 1st, 2025. Merge them with information on human mobility and stringency index of lockdown 
@@ -11,10 +9,9 @@
 # Author: Stephanie Roilo, TUD Dresden University of Technology, Germany & University of Bonn, Germany
 # Date: last edited on January 30th, 2025
 #
-###################################################
 
 library(arrow)
-library(rgbif)  
+# library(rgbif)  
 library(dplyr)   
 library(lubridate)
 library(data.table)  # for fast reading of large datasets
@@ -24,98 +21,14 @@ library(nlme)     # for GLS
 library(ggplot2)
 library(rnaturalearth)
 library(sf)
-library(tmap)
-library(gridExtra)
-library(effects)  # for plotting conditional effects of the models
-library(npreg)  # for non-parametric smoothing splines
+# library(tmap)
+# library(gridExtra)
+# library(effects)  # for plotting conditional effects of the models
+# library(npreg)  # for non-parametric smoothing splines
 
+# load daily obs. data
+load("data/data_n_obs.RData")
 
-### Access the January 2025 monthly GBIF snapshot ------------------------
-# see instructions on how to work with Parquet format data: https://data-blog.gbif.org/post/apache-arrow-and-parquet/ 
-# set the path to where the GBIF snapshot was downloaded 
-local_df <- open_dataset("G:/January2025_snapshot/occurrence.parquet")
-
-# check names of all columns in the dataset
-schema(local_df)
-# names of GBIF variables are explained here: https://techdocs.gbif.org/en/data-use/download-formats 
-
-# count number of observations per day per country
-snapshottab = local_df %>% 
-  filter(
-    is.na(decimallatitude) == FALSE,
-    is.na(decimallongitude) == FALSE,
-    is.na(countrycode) == FALSE,
-    basisofrecord == "HUMAN_OBSERVATION",
-    year >= 2010
-  )  %>%
-  group_by(year, month, day, countrycode) %>%
-  count() %>% 
-  collect() %>% 
-  arrange(countrycode, year, month, day) 
-# remove NAs (e.g. rows with missing days and/or months) | Note that countrycode = "NA" (Namibia) is different than NA (not available)
-snapshottab = na.omit(snapshottab)   # snapshottab contains data for 251 countries and dependent territories
-# create and eventDate column
-snapshottab$eventDate = as.Date(paste(snapshottab$year, snapshottab$month, snapshottab$day, sep="-"))
-# add rows for missing days on which no record was collected
-snapt2 = merge(snapshottab, expand.grid(countrycode = unique(snapshottab$countrycode), eventDate = unique(snapshottab$eventDate)), all = TRUE)
-# set the number of records to zero for those dates
-snapt2$n[is.na(snapt2$n)] = 0
-snapt2$year = year(snapt2$eventDate)
-snapt2$month = month(snapt2$eventDate)
-snapt2$day = day(snapt2$eventDate)
-# save to file
-write.table(snapt2, file = "Daily_occurrences_Jan2025snapshot_20250109.csv", sep = ";", dec = ",", row.names = FALSE)
-
-# compute the number of human observation records between March 15 and May 1 each year, per country
-MarMay = snapt2 %>% 
-  filter(eventDate >= as.Date(paste0(year(eventDate), "-03-15")), 
-         eventDate <= as.Date(paste0(year(eventDate), "-05-01"))) %>%
-  group_by(countrycode, year) %>%
-  summarise(count = sum(n))
-# check country list
-unique(MarMay$countrycode) # contains data for 251 countries and dependent territories (but BV - Bouvet Island did not have records in the selected timeframe)
-# differences between GBIF-employed country codes and those in ISO_3166_1$Alpha_2 (package ISOcodes): XK = Kosovo, and ZZ = "High Seas" -> observations in international waters
-
-### extract eBird record counts per day ----------------------
-ebirdc = local_df %>% 
-  filter(
-    is.na(decimallatitude) == FALSE,
-    is.na(decimallongitude) == FALSE,
-    institutioncode == "CLO",
-    is.na(countrycode) == FALSE,
-    basisofrecord == "HUMAN_OBSERVATION",
-    year >= 2010
-  ) %>%
-  group_by(year, month, day, countrycode) %>%
-  count() %>% 
-  collect()  %>% 
-  arrange(countrycode, year, month, day) 
-# remove NAs (e.g. rows with missing days and/or months)
-ebirdc = na.omit(ebirdc)
-# create and eventDate column
-ebirdc$eventDate = as.Date(paste(ebirdc$year, ebirdc$month, ebirdc$day, sep="-"))
-# merge to the daily counts of human observations
-names(ebirdc)[5] = "n_eBird"
-ebirdc2 = merge(snapt2, ebirdc[,c("countrycode", "eventDate", "n_eBird")], by = c("countrycode", "eventDate"), all = TRUE)
-# fill in missing values
-ebirdc2$n_eBird[is.na(ebirdc2$n_eBird)] = 0
-# save to file
-write.table(ebirdc2, file = "Daily_occurrences_HO_eBird_Jan2025snapshot_20250109.csv", sep = ",", dec = ".", row.names = FALSE)
-
-# check change in eBird records for the period between March 15 and May 1 each year
-marmayeb = ebirdc2 %>% 
-  filter(eventDate >= as.Date(paste0(year(eventDate), "-03-15")), 
-         eventDate <= as.Date(paste0(year(eventDate), "-05-01"))) %>%
-  group_by(countrycode, year) %>%
-  summarise(count_eBird = sum(n_eBird))
-# make sure the datasets are correctly aligned
-MarMay[,1:2] == marmayeb[,1:2]
-# append the eBird count to the human records count dataframe
-MarMay = cbind(MarMay, marmayeb$count_eBird)
-names(MarMay)[4] = "count_eBird"
-sum(MarMay$count_eBird > MarMay$count) # 0, all eBird counts are smaller than the total human records counts
-# save to file
-write.table(MarMay, file = "Records_per_country_MarMay_Jan2025snapshot_20250109.csv", sep = ";", dec = ",", row.names = FALSE)
 
 ### Stringency index and mobility reports -------------------
 
@@ -127,7 +40,7 @@ mob = fread("https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv
 start_date = "2019-01-01"  # to be entered in the format yyyy-mm-dd
 end_date = "2022-10-15"
 # filter the data to the time period of interest
-allcn = ebirdc2 %>% filter(
+allcn = data_obs %>% filter(
   eventDate >= start_date, 
   eventDate <= end_date)
 # add the 3-lettered isocode and the country name to the occurrence record dataset
@@ -172,7 +85,9 @@ allcn = allcn[,c(1:9, 11:16)]
 # save to file
 write.table(allcn, file = "Data_250_countries_Jan2025snapshot_20250109.csv", sep = ",", dec = ".", row.names = FALSE)
 
-rm(covid, mob,snapshottab, ebirdc)
+rm(covid, mob)
+
+
 ### Model effect of lockdown on changes in data collection ------------------------
 allcn = fread("Data_250_countries_Jan2025snapshot_20250109.csv")
 
@@ -393,18 +308,18 @@ tmap_save(changemap_ebird, width= 6, height=3, filename="Worldmap_change_eBird_r
 ### Model trends in data across time ----------------
 # smooth the trend in number of records collected between March 15th and May 1st every year
 # load aggregated counts of records for the time window March 15th to May 1st
-MarMay = read.table("Records_per_country_MarMay_Jan2025snapshot_20250109.csv", sep = ";", dec = ",", header=T)
+data_sum_marmay = read.table("Records_per_country_MarMay_Jan2025snapshot_20250109.csv", sep = ";", dec = ",", header=T)
 # remove 2024 as data for that year still needs to be uploaded to the platform
-MarMay = MarMay[which(MarMay$year!=2024),]
+data_sum_marmay = data_sum_marmay[which(data_sum_marmay$year!=2024),]
 # filter out countries not included in the linear model
 dat = read.table("LinRegr_fullData_Jan2025snapshot_20250109.csv", sep=";", dec=",", header=T)
 # make sure that the country code for Namibia is not read as an NA
 dat$countrycode[dat$Country == "Namibia"] = as.character("NA")
-MarMay$countrycode[is.na(MarMay$countrycode)] = as.character("NA")
+data_sum_marmay$countrycode[is.na(data_sum_marmay$countrycode)] = as.character("NA")
 
 # loop through countries
 for (cnt in dat$countrycode){
-  cntdat = MarMay[which(MarMay$countrycode==cnt),]
+  cntdat = data_sum_marmay[which(data_sum_marmay$countrycode==cnt),]
   # with smoothing parameter = 0.5
   smooth05 = npreg::ss(cntdat$year, cntdat$count, spar=0.5)
   png(file=paste0("~/images/smooths_spar05/Smooth05_MarMay_", cnt, ".png"), width= 800, height=500)
