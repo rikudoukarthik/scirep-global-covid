@@ -1,10 +1,115 @@
 ---
-title: "title?"
+title: "Global assessment of COVID-19 impact on biodiversity monitoring: Scale and statistical concerns"
+author:
+  - name: Karthik Thrikkadeeri
+    affiliations: 
+      - ref: lsu
+  - name: Ashwin Viswanathan
+    affiliations: 
+      - ref: bmt
+  - name: Vinay K L
+    affiliations: 
+      - ref: lsu
+affiliations: 
+  - id: lsu
+    name: "Department of Biological Sciences, Louisiana State University, Baton Rouge 70803, Louisiana, USA"
+  - id: bmt
+    name: "Bird Monitoring Team, Nature Conservation Foundation, Mysuru 570017, Karnataka, India"
 bibliography: covid-ebirding.json
 csl: nature.csl
 format: 
   docx:
     reference-doc: word_template.docx
+editor_options: 
+  chunk_output_type: console
 ---
 
-Render [@thrikkadeeri2024]
+# Introduction
+
+The COVID-19 pandemic had a significant impact on humanity, including widespread deaths and a sharp disruption in "normal" human activities (i.e., Anthropause). In order to understand how this influenced biodiversity data collection across the world, Roilo et al.[@roilo2025] analysed large-scale biodiversity datasets. Although some of their results match perceptions and evidence from various regions, we highlight some issues underlying their analytical choices which have not been addressed adequately. We also illustrate that several of their inferences about the pandemic and biodiversity monitoring (particularly in the Global South) do not directly follow from their results, and are therefore unfounded.
+
+# Socioeconomic analysis does not support inferences {#sec-socioeconomic}
+
+Our first major concern is with the headline inference, that a country's economic status explains its citizen science data generation during the pandemic. This inference is drawn primarily from modelling the change in citizen science records (compared to a pre-pandemic baseline) against economic class (Fig. 2, Fig. S2). Despite economic class being clearly directional (most to least developed; e.g., labelled 1--4 in Table S4), it has not been treated as such in the model. Given this implicit directionality, and the fact that only one pairwise comparison of classes (developed vs developing) showed a significant difference, we disagree with the conclusion that economic class affected data collection during the pandemic. In fact, the authors do not find any evidence that the "least developed" countries behaved any differently from developed and emerging countries. The presented inference is therefore not only scientifically untrue and misleading, but is also problematic in the image that it paints. A reasonable inference here is that there is no evidence of an impact of economic class, but that the "developed" countries behaved differently from the "developing" ones, perhaps due to other unaccounted differences between them.
+
+A vital nuance that is lacking in the article---in both the analyses and the discussion---is the impact of the history of citizen science in countries, independent of economic class. Many countries (developed and otherwise) have large communities of citizen scientists built over many years with the help of dedicated regional programmes. Such countries are likely to have responded in a more complex manner to the pandemic, as is seen with increases in data in some cases [@basile2021; @thrikkadeeri2024]. Roilo et al. [@roilo2025] themselves acknowledge some previous studies that showed highly variable results [@hochachka2021] (some showing no effect of the lockdown [@stenhouse2022] or a positive one [@sweet2022; @crimmins2021]). Without factoring in nuances like the presence of active resident birding communities and other sociocultural factors affecting citizen science participation, the discourse is reduced to just national government regulations and the question becomes trivial: how dependent are countries on foreign (primarily birding) tourists for data collection? Clearly, if the tourist inflow stopped in such countries, there would be an inevitable drop in data collection. A likely reason for the inconclusive statistical link presented here between economic class and data collection is that a number of "non-developed" countries have strong resident communities of naturalists today---a function of other sociocultural realities, and a feature that was restricted to developed countries in the past.
+
+There are other issues with the interpretation and presentation of this analysis (Fig. 2), in which an especially important predictor of data generation was the number of park visits. Parks themselves in an urban planning context as well as the concept of park visits may not be as prevalent or documented as well in parts of the Global South (as in the North). Google Mobility data about visits to "parks and outdoor areas" therefore need to be treated with caution. Moreover, the authors discuss this analysis extensively in the context of government regulations, which is questionable because the stringency index variable came out as insignificant in their GLS regression. The variable itself is also questionable because the daily stringency index was averaged over the highly variable six-week period---a methodological decision that the authors have omitted from the manuscript (but is evident in the code).
+*Need to play around with this data for developing countries and see if it still makes sense.*
+
+# Analysis of only two months of a three-year pandemic {#sec-temp-scope}
+
+```{r}
+#| echo: false
+#| warning: false
+
+library(lubridate)
+library(dplyr)
+
+india <- seq(as_date("2020-03-25"), as_date("2020-05-31"), by = "day")
+roilo <- seq(as_date("2020-03-15"), as_date("2020-05-01"), by = "day")
+
+diff_days_prop_ind <- floor(100*(length(india)-length(roilo))/length(india))
+```
+
+With their title, Roilo et al.[@roilo2025] position their study as a comprehensive global assessment of the impact of the COVID-19 pandemic. Globally, the pandemic was a public health emergency for close to three years, with several countries facing the greatest impact (death tolls) in 2021 rather than 2020. The authors however restrict their study to just the first six weeks of the pandemic (15 March--1 May 2020), which they call "the COVID-19 lockdown". The study therefore not only completely misses the second year of lockdowns (2021) but also fails to account for differences around the world in the timing of first wave lockdowns [@hale2020]. For instance, the first lockdown in India started on 25 March 2020 [@bbcnews2020] and extended until 31 May [@banerjea2020], meaning the analysed period misrepresented $\gt$ `r diff_days_prop_ind`% of the actual lockdown in India. As such, the scope here is so narrow that the title is misleading at best, and the study is more accurately positioned as an analysis of the impact of the first COVID-19 "lockdown" rather than the pandemic. (Note: The interactive [Anthropause app](https://sroilo.shinyapps.io/Anthropause_app/) allows full-year visualisation, but no actual analyses at the annual level.)
+
+The study is also inconsistent in its use of "pre-pandemic" benchmarks. While most analyses in the study compare changes in the first lockdown relative to the same period in 2019, the change in park visitors metric derived from Google Mobility data---which was the most significant predictor in their socioeconomic analysis (@sec-socioeconomic)---actually represents a comparison with the five-week period of 3 January--6 February 2020. This inconsistent choice is not justified and is logically flawed. Human mobility is driven by many seasonal realities such as weather, natural phenology, holidays, sociocultural calendars, etc., so equating the periods of January--February and March--May in this context is statistically/scientifically flawed.
+
+# Lack of rigour in data curation, inappropriate statistics and contradictory results {#sec-rigour}
+
+Citizen science data are characteristically noisy and uneven, therefore requiring careful curation of data prior to analyses [@johnston2021; @viswanathan2024a], and rendering simple statistical methods and conventional significance tests inappropriate [@isaac2014]. Because this study includes several countries that have very little available citizen science data (most "least developed" countries analysed), an absolutely vital consideration [@johnston2021; @viswanathan2024a] would be whether these countries have enough data to be analysed at all (i.e., minimum data thresholds). Another important statistical step would be to include explicit effort correction [@isaac2014].
+
+Such best practices appear to be completely absent in this paper. The statistical analyses in Roilo et al.[@roilo2025] do not correct for effort nor involve curated data. They do not utilise effect sizes or confidence estimates, and instead either rely on p-values (inappropriate for large, noisy datasets [@gotelli2004; @wasserstein2016]) or simple numerical or visual comparisons of percent change and counts. For example, their headline metric is a simple percent change in number of occurrence records, as shown in Fig. 1. Notably, many countries show a positive or negative change of 0%--25%, which could very likely be simple stochastic artefacts of multiple comparisons, such as "regression to the mean" [@mazalla2022; @barnett2005].
+
+Another inappropriate statistical choice is to assess significance of the 2020 lockdown deviation in data collection (from default growth curves since 2010), by fitting a smoothing spline to the 2010--2023 data and comparing predicted values for 2020 with the observed values. Despite the misleading reference in Table S2 to "linear regressions", smoothing splines are not an appropriate statistical method in this context due to their following properties [@helwig2024]: (1) They do not produce simultaneous confidence bands, thereby underestimating uncertainty and risking false positives. (2) The width of their confidence interval depends on the smoothing parameter (which the authors limited to 0.4--0.6 without justification). (3) They ignore residual noise, rendering comparisons of observed and predicted values meaningless.
+
+We also found some contradictions in the presentation of these and similar results. Figure 1 shows percent change between 2019 and 2020, whereas Table S2 shows percent change between predicted and observed values for 2020---and these two have several contradictory patterns. For example, Canada, United States, New Zealand, Zimbabwe and Papua New Guinea all show non-"significant" changes in Table S2 but decreases (Papua New Guinea) or increases (others) in Figure 1. Further, Australia shows a decrease in Table S2 but an increase in Figure 1.
+
+# Change in number of records is a flawed response variable
+
+Roilo et al. [@roilo2025] compare the total number of records (= "observations") uploaded to eBird and GBIF (where eBird is the primary source that contributes `X`% of observations) to investigate changes in data generation driven by the first lockdown. We argue that this response variable is fundamentally flawed, and therefore so is much of the interpretation which is contingent on the appropriateness of this variable (Fig. 1, @sec-act-ranges).
+
+eBird follows a semi-structured framework [@kelling2019; @sullivan2014], with data organised at the level of checklists and not as individual observations. An appropriate indication of data generation is therefore the number of checklists rather than the number of observations as used in this study. Several pandemic-associated changes (as well as many other unrelated factors) are likely to influence the number of observations associated with a checklist, of which we discuss the two most important. 
+
+1. **Reduced mobility.** People moved around less during the pandemic and also potentially visited fewer national parks and "interesting" areas, instead spending more time in urban areas closer to home [@hochachka2021; @thrikkadeeri2024; @basile2021; @randler2020; @vardi2021]. This very likely resulted in a reduction in the number of species observed per checklist due to lower species diversity in urban areas. Therefore, even if the number of checklists (hence the data generation effort) did not change during the pandemic, the number of observations will inherently have decreased, producing the false impression of lowered participation in citizen science. 
+
+2. **Reduced group birding.** People also avoided groups during the lockdowns [@randler2020; @thrikkadeeri2024]. In eBird data, this likely reflected in fewer "group birding" events [@thrikkadeeri2024]. Roilo et al. [@roilo2025] summarised observations without removing "duplicates" (an obvious curation step that was missed; @sec-rigour), which are multiple copies of the same observations created for every birder involved in a group birding event. Once again, regardless of change in the number of "unique" checklists (i.e., independent birding effort), the number of observations during 2020 will have necessarily decreased. 
+
+Using GBIF data, which is an aggregation of a wide variety of datasets, is very complicated, especially for such blanket analyses. Since each dataset may have a different framework and protocol [@gbif2025], it will also have unique caveats of the sort that we outlined for eBird. We therefore recommend using eBird data alone for such global analyses, especially given that its caveats are well understood and that it accounts for a large proportion of global GBIF data.
+
+# Analysis of eBirder activity is questionable/incorrectly interpreted {#sec-act-ranges}
+
+The authors found that eBirders covered smaller areas than expected during the first COVID-19 lockdown. While this result is likely true, and is in fact one of few unanimous consistent patterns across studies exploring the pandemic impact [@hochachka2021; @thrikkadeeri2024; @basile2021; @randler2020; @vardi2021], the statistical method used to arrive at the result is in appropriate. They used a two-sample Kolmogorov-Smirnov test to check for a significant difference between the 2019 and 2020 values, but this test is not appropriate because it focuses on the distribution of data (rather than their means as in previous analyses)---effectively comparing whether areas of eBirder activity in 2019 and 2020 followed the same distribution [@berger2014]. This test is thus sensitive to differences in shape in addition to mean or variance, and is therefore not robust to unequal sample sizes or noisy data [@bubeliny2011].
+
+The authors further compared the countries where each eBirder recorded observations in 2019 and 2020. However, they only considered 30 eBirders per country for this analysis, and these 30 were selected from the eBirders with observations on the most days during the six-week period in 2019. They introduce the premise of transboundary migrations of eBirders, suggesting that in less developed countries (which are generally also more biodiverse) higher proportions of data contribution come from tourists, i.e., foreign eBirders. While this is undeniably true, the analysis itself is questionable because it considers the 2019 top 30 eBirder list as the benchmark. Regardless of the economic class of a country, this can be misleading especially for such short timeframes analysed, since many factors unrelated to the pandemic could result in a top 30 list that does not represent local consistent birding, i.e., short-term visitors (or tourists) could lead in "most activity" even while many resident birders remain active. 
+
+It is obvious and intuitive that less developed countries would have greater tourism birding, and most tourists will likely not return to the same country in the following year. On the other hand, developed countries have lower contribution of tourism birding. The concept of returning birders does not make sense in the context of how tourism works; in order to infer about birders who "stopped collecting data", the analysis should focus on local birders only and no tourist birders. Moreover, the authors interpret Figure 4 with statements about developing and least developed countries together; the actual results only hold true for the least developed countries, whereas developing countries, notably, showed patterns similar to emerging and developed countries---which ties back to our earlier point about threshold minima for data quantity. Nevertheless, in order to claim an effect of the pandemic, the pattern seen during the six-week periods of 2019 and 2020 needs to be compared against those in other months of the year as well as other pairs of years.
+
+# Conclusion
+
+In general, there seems to have been high variability across geographical units in the impact of the pandemic on citizen science data [@hochachka2021; @thrikkadeeri2024]; as a result, the larger the spatial or temporal scale, the less evidence there seems to be for any strong consistent trend. While some of the Roilo et al.'s results [@roilo2025] matched patterns seen elsewhere, the analyses themselves have underlying issues owing to the complex nature of citizen science data. 
+
+The main takeaway from Roilo et al.[@roilo2025] was that local, community-based biodiversity monitoring programmes are vital, especially in less developed countries, to sustain and improve the quality of global biodiversity monitoring. This is certainly true and something to emphasise and work towards. However, we stress that our fundamental concern discussed here is about incomplete/superficial/weak analyses of complex citizen science datasets, and broad sweeping inferences that do not directly follow from their results. These often give rise to bold---and perhaps misleading---claims at large scales, particularly about issues that might work differently between the Global North and South. Importantly, our intent is not to discourage such attempts of analysing citizen science data, but rather to caution that extra care be taken and nuance be incorporated when making such large-scale inferences.
+
+
+
+Secondly, even among the countries with valid results, variability in the observed response to the pandemic has been ignored in their interpretations (see @sec-rigour for specific examples). Moreover, when discussing literature, although 
+Roilo et al.[@roilo2025] do acknowledge 
+
+some previous studies that showed highly variable results, they fail to contextualise nuanced analyses particularly relating to their inferences about the Global South [@thrikkadeeri2024]. Amongst the studies acknowledged, many nuances and especially contradictory results have remained unaddressed. The authors, however, still claim “a comprehensive evaluation of how country-specific regulations affected people’s movements and data collection activities”, effectively reducing the nuances down to just national government regulations and ignoring the many other sociocultural factors affecting citizen science participation.
+
+# References
+
+::: {#refs}
+:::
+
+{{< pagebreak >}}
+
+# Author contributions
+
+
+
+# Competing interests
+
+We (KT and AV) conducted a similar analysis for India [@thrikkadeeri2024], which found results that do not match those of Roilo et al.[@roilo2025] and was not cited. Although other studies reporting similar results were cited, they were not contextualised adequately.
