@@ -26,101 +26,10 @@ library(ggplot2)
 #library(viridis) 
 library(ggExtra)
 
-# working with the January 2025 snapshot of GBIF data
-# how to work with Parquet format data: https://data-blog.gbif.org/post/apache-arrow-and-parquet/ 
-local_df <- open_dataset("G:/January2025_snapshot/occurrence.parquet")
 
-### extract the data from eBird, and the metadata on individual users -------------
-# define the list of countries, based on their eBird data volumes in 2019 (March 15 to May 1)
-cnt_list = c("US", "CA", "ES", "AU", "GB", "TW", "PT", "IL", "DE", "FR",  # Developed region
-             "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "ZA", "TR",  # emerging region
-             "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",  # developing region
-             "NP", "RW", "TZ", "BD", "KH", "MM", "HT", "SN", "UG", "MZ")  # least developed region
-# year 2019
-for (cnt in cnt_list){
-  ebirders = local_df %>% 
-    filter(
-      countrycode == cnt,
-      is.na(decimallatitude) == FALSE,
-      is.na(decimallongitude) == FALSE,
-      institutioncode == "CLO",
-      basisofrecord == "HUMAN_OBSERVATION",
-      eventdate >= "2019-03-15", 
-      eventdate <= "2019-05-01" 
-    ) %>%
-    select(countrycode, year, month, day, recordedby, decimallatitude, decimallongitude) %>% 
-    collect() %>% arrange(year, month, day, recordedby)
-  # unlist observers' IDs, which is currently in a list/array format
-  ebirders$recordedby = unlist(ebirders$recordedby)
-  # filter out records from the same observer, location and day (same observer, same date, same location)
-  ebirders = ebirders %>% distinct(recordedby, year, month, day, decimallatitude, decimallongitude, .keep_all = TRUE)
-  ebirders$eventDate = as.Date(paste(ebirders$year, ebirders$month, ebirders$day, sep="-"))
-  write.table(ebirders, paste0("~/eBirders_2019/eBirders_", cnt, "_2019.csv"), sep=";", dec=",", row.names=F)
-} 
-
-#year 2020
-for (cnt in cnt_list){
-  ebirders = local_df %>% 
-    filter(
-      countrycode == cnt,
-      is.na(decimallatitude) == FALSE,
-      is.na(decimallongitude) == FALSE,
-      institutioncode == "CLO",
-      basisofrecord == "HUMAN_OBSERVATION",
-      eventdate >= "2020-03-15", 
-      eventdate <= "2020-05-01" 
-    ) %>%
-    select(countrycode, year, month, day, recordedby, decimallatitude, decimallongitude) %>% 
-    collect() %>% arrange(year, month, day, recordedby)
-  # unlist observers' IDs, which is currently in a list/array format
-  ebirders$recordedby = unlist(ebirders$recordedby)
-  # filter out records from the same observer, location and day (same observer, same date, same location)
-  ebirders = ebirders %>% distinct(recordedby, year, month, day, decimallatitude, decimallongitude, .keep_all = TRUE)
-  ebirders$eventDate = as.Date(paste(ebirders$year, ebirders$month, ebirders$day, sep="-"))
-  write.table(ebirders, paste0("~/eBirders_2020/eBirders_", cnt, "_2020.csv"), sep=";", dec=",", row.names=F)
-} 
-
-# extract the number of eBird records and number of unique eBirders during March 15 to May 1 in 2019 and in 2020
-# number of eBird records ( see script GBIF-COVID19 analysis_20250130.R for the origin of ebirdc2 dataframe)
-ebirdc2 = read.table("Daily_occurrences_HO_eBird_Jan2025snapshot_20250109.csv", sep = ",", dec = ".", header=T)
-# calculate the daily number of eBird records for 2019
-dfiltered = filter(ebirdc2, 
-                   eventDate >= "2019-03-15",
-                   eventDate <= "2019-05-01") %>% 
-  group_by(countrycode) %>% summarise(n_eBird = sum(n_eBird)) %>% arrange(countrycode) %>% na.omit()
-names(dfiltered)[2] = "n_eBird_2019"
-# calculate the daily number of eBird records for 2020
-dfiltered2 = filter(ebirdc2, 
-                    eventDate >= "2020-03-15",
-                    eventDate <= "2020-05-01") %>% 
-  group_by(countrycode) %>% summarise(n_eBird = sum(n_eBird)) %>% arrange(countrycode) %>% na.omit()
-names(dfiltered2)[2] = "n_eBird_2020"
-# bind the two dataframes together
-obs_nr = merge(dfiltered, dfiltered2, by="countrycode", all.x =T, all.y = T)
-
-# calculate the number of unique eBirders active during the lockdown period in 2019 and in 2020, and collect their unique IDs
-for ( cnt in cnt_list) {
-  ebirders19 = read.table(paste0("~/eBirders_2019/eBirders_", cnt, "_2019.csv"), sep=";", dec=",", header=T)
-  ebirders20 = read.table(paste0("~/eBirders_2020/eBirders_", cnt, "_2020.csv"), sep=";", dec=",", header=T)
-  ebirders19 = ebirders19 %>% 
-    summarise(n_obsr = length(unique(recordedby)), 
-              ID_obsr = paste(sort(unique(recordedby)), collapse=" | "))
-  obs_nr$n_obsr_2019[obs_nr$countrycode == cnt] = ebirders19$n_obsr
-  obs_nr$ID_obsr_2019[obs_nr$countrycode == cnt] = ebirders19$ID_obsr
-  
-  ebirders20 = ebirders20 %>% 
-    summarise(n_obsr = length(unique(recordedby)), 
-              ID_obsr = paste(sort(unique(recordedby)), collapse=" | "))
-  obs_nr$n_obsr_2020[obs_nr$countrycode == cnt] = ebirders20$n_obsr
-  obs_nr$ID_obsr_2020[obs_nr$countrycode == cnt] = ebirders20$ID_obsr
-}
-# remove missing countries
-obs_nr = na.omit(obs_nr)
-# save to file
-write.table(obs_nr, "Fig3_eBirders_Jan2025snapshot.csv", sep=";", dec=",", row.names=F)
 
 # plot number of eBird records (log10-transformed), ordered by economic class
-tot_ebird = obs_nr %>% mutate(countrycode = factor(
+tot_ebird = data_sum_marmay_1920 %>% mutate(countrycode = factor(
   countrycode,levels=c("US", "CA", "ES", "AU", "GB", "TW", "PT", "IL", "DE", "FR",  # Developed region
                        "IN", "CR", "MX", "BR", "AR", "PE", "CL", "TH", "ZA", "TR",  # emerging region
                        "CO", "BZ", "PA", "GT", "EC", "HN", "MY", "MA", "AE", "HK",  # developing region
