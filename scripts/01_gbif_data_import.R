@@ -1,5 +1,8 @@
 # exporting subsets of occurrence data required downstream
 
+# custom GBIF download
+# https://www.gbif.org/occurrence/download?basis_of_record=HUMAN_OBSERVATION&month=3&month=4&month=5&year=2019,2022&occurrence_status=present
+
 library(arrow)
 library(dplyr)   
 library(tidyr)
