@@ -1,0 +1,5 @@
+project:
+  title: scirep-global-covid.Rproj
+  execute-dir: project
+editor: source
+embed-resources: true
